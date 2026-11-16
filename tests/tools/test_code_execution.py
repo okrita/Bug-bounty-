@@ -1001,6 +1001,7 @@ class TestHeadTailTruncation(unittest.TestCase):
         self.assertEqual(stat_mod.S_IMODE(os.stat(spill).st_mode), 0o600)
 
 
+@pytest.mark.platforms("posix")  # AF_UNIX socketpair
 class TestRpcTokenAuthorization(unittest.TestCase):
     """The per-session RPC token must gate socket dispatch (fail-closed).
 
