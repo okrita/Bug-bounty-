@@ -24,6 +24,9 @@ const _chatMessageFieldsExhaustive: {
 
 const COMPARED_FIELDS = [
   'rowId',
+  // Durable uid rides with rowId at persistence — refresh reconciliation
+  // keys on it after a compaction rewrite (#123294), so identity publishes.
+  'messageUid',
   'persistedTurn',
   'durableComplete',
   'recovered',
