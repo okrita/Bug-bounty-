@@ -127,6 +127,9 @@ const sessionScopeByRuntimeId = new Map<string, string>()
 // (approval.respond) when every durable binding (tile / hint / row) is absent
 // — while durable stored identity keeps outranking it (#97511).
 const sessionOwnerByRuntimeId = new Map<string, SessionOwnerScope>()
+// Owner evidence can arrive before any transcript state changes. Surfaces
+// following the focused runtime must be able to observe that evidence too.
+export const $runtimeSessionOwnerRevision = atom(0)
 
 export function recordSessionEventScope(event: { connectionId?: string; profile?: string; session_id?: string }): void {
   if (!event.session_id) {
@@ -139,6 +142,7 @@ export function recordSessionEventScope(event: { connectionId?: string; profile?
       connectionId: event.connectionId,
       profile: String(event.profile ?? '').trim() || 'default'
     })
+    $runtimeSessionOwnerRevision.set($runtimeSessionOwnerRevision.get() + 1)
 
     // An owner resolved after the focus moved must still re-home the rail.
     syncPreviewScope()
@@ -154,6 +158,7 @@ export function recordSessionEventScope(event: { connectionId?: string; profile?
   if (profile) {
     const profileKey = normalizeProfileKey(profile)
     sessionOwnerByRuntimeId.set(event.session_id, profileKey)
+    $runtimeSessionOwnerRevision.set($runtimeSessionOwnerRevision.get() + 1)
     sessionScopeByRuntimeId.set(event.session_id, profileKey)
   }
 
@@ -194,6 +199,7 @@ export function forgetProfileOnlyRuntimeOwners(profile: string): void {
   for (const [runtimeId, owner] of sessionOwnerByRuntimeId) {
     if (typeof owner === 'string' && normalizeProfileKey(owner) === retired) {
       sessionOwnerByRuntimeId.delete(runtimeId)
+      $runtimeSessionOwnerRevision.set($runtimeSessionOwnerRevision.get() + 1)
       sessionScopeByRuntimeId.delete(runtimeId)
     }
   }
@@ -920,6 +926,7 @@ export function dropSessionState(runtimeId: string) {
   clearSessionProviderWait(runtimeId)
   sessionScopeByRuntimeId.delete(runtimeId)
   sessionOwnerByRuntimeId.delete(runtimeId)
+  $runtimeSessionOwnerRevision.set($runtimeSessionOwnerRevision.get() + 1)
   // A runtime that never bound a stored id never will now (#73890).
   forgetPendingRuntimeTabs(runtimeId)
 
@@ -957,6 +964,7 @@ export function clearAllSessionStates() {
   clearAllProviderWaits()
   sessionScopeByRuntimeId.clear()
   sessionOwnerByRuntimeId.clear()
+  $runtimeSessionOwnerRevision.set($runtimeSessionOwnerRevision.get() + 1)
   forgetPendingRuntimeTabs()
   $stalledSessionIds.set([])
   $sessionStates.set({})
