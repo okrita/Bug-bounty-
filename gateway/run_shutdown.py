@@ -630,7 +630,7 @@ class GatewayShutdownMixin(GatewaySessionEndMixin, GatewayHomeShutdownNoticeMixi
         )
         try:
             if self_suspend_available():
-                accepted = await asyncio.to_thread(suspend_self)
+                accepted = await self._suspend_after_status_goodbye(suspend_self)
                 lever = "self-suspend"
                 if accepted:
                     # flaps answers seconds BEFORE the kernel freezes, so the fence has to span
@@ -652,7 +652,7 @@ class GatewayShutdownMixin(GatewaySessionEndMixin, GatewayHomeShutdownNoticeMixi
                     )
                     return
                 # The watcher already holds the supervisor across this call.
-                accepted = await asyncio.to_thread(request_brokered_suspend, url)
+                accepted = await self._suspend_after_status_goodbye(request_brokered_suspend, url)
                 lever = "brokered suspend"
                 if not accepted:
                     self._scale_to_zero_abandon_suspend()
@@ -1356,7 +1356,7 @@ class GatewayShutdownMixin(GatewaySessionEndMixin, GatewayHomeShutdownNoticeMixi
         """
         from gateway.config_loader import drop_bridged_env
         from hermes_constants import get_default_hermes_root, get_hermes_home
-        from tools.environments.local import host_gateway_child_env, served_profile_child_env
+        from tools.environments.local import gateway_child_env, host_gateway_child_env
 
         home = get_hermes_home()
         try:
@@ -1390,9 +1390,7 @@ class GatewayShutdownMixin(GatewaySessionEndMixin, GatewayHomeShutdownNoticeMixi
         if on_default or settled_multiplex or multiplex:
             watcher_env = host_gateway_child_env()
         else:
-            watcher_env = served_profile_child_env(
-                target_home=home, inherit_credentials=True,
-            )
+            watcher_env = gateway_child_env(home)
         watcher_env = drop_bridged_env(watcher_env)
         watcher_env.pop("_HERMES_GATEWAY", None)
         from gateway.restart_watcher_env import keep_running_checkout_importable
